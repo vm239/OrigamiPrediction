@@ -1,1 +1,1 @@
-# Origami_Prediction
+# OrigamiPrediction
