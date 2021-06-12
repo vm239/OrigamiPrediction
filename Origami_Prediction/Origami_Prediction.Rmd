@@ -5,13 +5,14 @@ date: "12/06/2021"
 output: html_document
 ---
 ```{r}
-library(C50)
 library(caret)
 library(RWeka)
 library(tidyverse)
 library(GGally)
 library(lubridate)
 library(party)
+library(rpart)
+library(rpart.plot)
 ```
 
 
