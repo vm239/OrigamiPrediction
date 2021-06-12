@@ -33,14 +33,35 @@ drop_out_train <- drop_out %>% filter(type == "train")
 drop_out_test <- drop_out %>% filter(type == "test") 
 ```
 Using the CART Trees Model
+
 ```{r}
 library(caret)
 TRAIN1 <- drop_out_train %>% select(-type)
 TRAIN2 <- TRAIN1[,c(2:13)]
+TEST1 <- drop_out_test[,c(2:13)]
 #Removing the Type and TC_ID columns
+```
+Prediction1 - Predicting the Completion of the Origami Class
+```{r}
+model1 <- rpart(Completed~., data = TRAIN2, control=rpart.control(minsplit=2, minbucket=1, cp=0.001))
 ```
 
 ```{r}
+par(xpd = NA) # Avoid clipping the text in some device
+plot(model1)
+text(model1, digits = 3)
+```
+```{r}
+predicted.classes <- model1 %>% 
+  predict(TEST1, type = "class")
+head(predicted.classes)
+```
+```{r}
+mean(predicted.classes == TEST1$Completed)
+```
+The accuracy is 60%
+```{r}
+
 MySummary  <- function(data, lev = NULL, model = NULL){
   df <- defaultSummary(data, lev, model)
   tc <- twoClassSummary(data, lev, model)
@@ -66,12 +87,14 @@ cartFit <- train(Completed ~., #Define which variable to predict
 cartFit$finalModel
 cartFit
 ```
+Accuracy is 71.66%
+
 ```{r}
 library(rpart.plot)
 rpart.plot(cartFit$finalModel)
 print(cartFit)
 ```
-
+Testing fitted model for Completion of origami
 ```{r setup, include=TRUE, cache = FALSE}
 library(caret)
 TEST1 <- drop_out_test[,c(2:13)] #Remove the student_id variable that we do not want to use in the model
@@ -82,16 +105,33 @@ cartClasses <- predict(cartFit,TEST1)
 #Generate model statistics
 confusionMatrix(data = cartClasses, as.factor(TEST1$Completed))
 ```
+Accuracy is 60% as seen above, same as the basic model
 
-
-
-
-
+Prediction2 - Predicting the choosing of an online Origami Class
 ```{r}
 TRAIN3 <- TRAIN1[,c(2:13)]
 #Removing the Type and TC_ID columns
 ```
+```{r}
+model2 <- rpart(Take.online.class~., data = TRAIN2, control=rpart.control(minsplit=2, minbucket=1, cp=0.001))
+```
+```{r}
+par(xpd = NA) # Avoid clipping the text in some device
+plot(model2)
+text(model2, digits = 3)
+```
+Testing the basic model for taking online origami class
+```{r}
+predicted.classes <- model2 %>% 
+  predict(TEST1, type = "class")
+head(predicted.classes)
+```
+```{r}
+mean(predicted.classes == TEST1$Take.online.class)
+```
+The accuracy is 80%
 
+Building a fitted training set
 ```{r}
 MySummary  <- function(data, lev = NULL, model = NULL){
   df <- defaultSummary(data, lev, model)
@@ -119,7 +159,18 @@ cartFit1$finalModel
 print(cartFit1)
 rpart.plot(cartFit1$finalModel)
 ```
+```{r}
+TEST1 <- drop_out_test[,c(2:13)]
+cartClasses1 <- predict(cartFit1,TEST1)
+```
+```{r}
+#Generate model statistics
+confusionMatrix(data = cartClasses1, as.factor(TEST1$Take.online.class))
+```
+The accuracy is the same, at 80%
+
 Conditional Inference trees
+Prediction1 - Predicting the Completion of the Origami Class
 ```{r}
 library(party)
 ```
@@ -129,27 +180,27 @@ condFit <- ctree(Completed~., TRAIN2)
 plot(condFit, tp_args = list(beside = TRUE))
 condFit
 ```
-
-
-Now test your new Conditional Inference model by predicting the test data and generating model fit statistics.
+Running the Conditional Inference model by for predicting completion on the test data and generating model fit statistics.
 ```{r}
 condClasses <- predict(condFit, newdata = TEST1)
 
  #Generate model statistics
  confusionMatrix(data = condClasses, as.factor(TEST1$Completed))
 ```
+The accuracy is 60%
 
+Prediction2 - Predicting students taking online classes for Origami
 ```{r}
 condFit1 <- ctree(Take.online.class~., TRAIN2)
 plot(condFit1, tp_args = list(beside = TRUE))
 condFit1
 ```
-
-
-Now test your new Conditional Inference model by predicting the test data and generating model fit statistics.
+Running the Conditional Inference model by for predicting choosing online origami class on the test data and generating model fit statistics.
 ```{r}
 condClasses1 <- predict(condFit1, newdata = TEST1)
 
  #Generate model statistics
  confusionMatrix(data = condClasses1, as.factor(TEST1$Take.online.class))
 ```
+The accuracy is noted at 80%
+
