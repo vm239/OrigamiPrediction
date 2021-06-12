@@ -1,0 +1,155 @@
+---
+title: "Origami_Prediction"
+author: "Five Find Outers"
+date: "12/06/2021"
+output: html_document
+---
+```{r}
+library(C50)
+library(caret)
+library(RWeka)
+library(tidyverse)
+library(GGally)
+library(lubridate)
+library(party)
+```
+
+
+```{r}
+drop_out <- read.csv("Vidya data 1 - Sheet2.csv")
+```
+
+```{r}
+set.seed(1313)
+drop_out <- drop_out %>% mutate(TC_ID = as.factor(TC_ID), Gender = as.factor(Gender), Country = as.factor(Country), Weekly_academics = as.factor(Weekly_academics), Weekly_extracurriculars = as.factor(Weekly_extracurriculars), Technology = as.factor(Technology), Internet_speed = as.factor(Internet_speed), Enjoy_AC = as.factor(Enjoy_AC), Relaxing = as.factor(Relaxing), Instruction = as.factor(Instruction), Class.format = as.factor(Class.format), Completed = factor(Completed, levels = c("No", "Yes")), Take.online.class = factor(Take.online.class, levels = c("No","Yes")))
+```
+
+```{r}
+perc_75 <- (unique(drop_out$TC_ID) %>% length) * .75
+perc_75 <- perc_75 %>% round
+train_ids <- sample(unique(drop_out$TC_ID))[1:perc_75]
+drop_out <- drop_out %>% mutate(type = ifelse(TC_ID %in% train_ids, "train", "test"))
+drop_out_train <- drop_out %>% filter(type == "train") 
+drop_out_test <- drop_out %>% filter(type == "test") 
+```
+Using the CART Trees Model
+```{r}
+library(caret)
+TRAIN1 <- drop_out_train %>% select(-type)
+TRAIN2 <- TRAIN1[,c(2:13)]
+#Removing the Type and TC_ID columns
+```
+
+```{r}
+MySummary  <- function(data, lev = NULL, model = NULL){
+  df <- defaultSummary(data, lev, model)
+  tc <- twoClassSummary(data, lev, model)
+  pr <- prSummary(data, lev, model)
+  out <- c(df,tc,pr)
+  out}
+
+ctrl <- trainControl(method = "repeatedcv", #Tell caret to perform k-fold cross validation
+                repeats = 3, #Tell caret to repeat each fold three times
+                classProbs = TRUE, #Calculate class probabilities
+                summaryFunction = MySummary)
+
+cartFit <- train(Completed ~., #Define which variable to predict 
+                data = TRAIN2, #Define the data set to train the model on
+                trControl = ctrl,
+                method = "rpart", #Define the model type
+                metric = "Accuracy", #Final model choice is made according to sensitivity
+                preProc = c("center", "scale")) #Center and scale the data to minimize the 
+```
+
+```{r}
+#Check the results
+cartFit$finalModel
+cartFit
+```
+```{r}
+library(rpart.plot)
+rpart.plot(cartFit$finalModel)
+print(cartFit)
+```
+
+```{r setup, include=TRUE, cache = FALSE}
+library(caret)
+TEST1 <- drop_out_test[,c(2:13)] #Remove the student_id variable that we do not want to use in the model
+
+#Generate prediction using previously trained model
+cartClasses <- predict(cartFit,TEST1)
+
+#Generate model statistics
+confusionMatrix(data = cartClasses, as.factor(TEST1$Completed))
+```
+
+
+
+
+
+```{r}
+TRAIN3 <- TRAIN1[,c(2:13)]
+#Removing the Type and TC_ID columns
+```
+
+```{r}
+MySummary  <- function(data, lev = NULL, model = NULL){
+  df <- defaultSummary(data, lev, model)
+  tc <- twoClassSummary(data, lev, model)
+  pr <- prSummary(data, lev, model)
+  out <- c(df,tc,pr)
+  out}
+
+ctrl <- trainControl(method = "repeatedcv", #Tell caret to perform k-fold cross validation
+                repeats = 3, #Tell caret to repeat each fold three times
+                classProbs = TRUE, #Calculate class probabilities
+                summaryFunction = MySummary)
+
+cartFit1 <- train(Take.online.class ~., #Define which variable to predict 
+                data = TRAIN3, #Define the data set to train the model on
+                trControl = ctrl,
+                method = "rpart", #Define the model type
+                metric = "Accuracy", #Final model choice is made according to sensitivity
+                preProc = c("center", "scale")) #Center and scale the data to minimize the 
+```
+
+```{r}
+#Check the results
+cartFit1$finalModel
+print(cartFit1)
+rpart.plot(cartFit1$finalModel)
+```
+Conditional Inference trees
+```{r}
+library(party)
+```
+Train a Conditional Inference Tree using the `party` package on the same training data and examine your results.
+```{r}
+condFit <- ctree(Completed~., TRAIN2)
+plot(condFit, tp_args = list(beside = TRUE))
+condFit
+```
+
+
+Now test your new Conditional Inference model by predicting the test data and generating model fit statistics.
+```{r}
+condClasses <- predict(condFit, newdata = TEST1)
+
+ #Generate model statistics
+ confusionMatrix(data = condClasses, as.factor(TEST1$Completed))
+```
+
+```{r}
+condFit1 <- ctree(Take.online.class~., TRAIN2)
+plot(condFit1, tp_args = list(beside = TRUE))
+condFit1
+```
+
+
+Now test your new Conditional Inference model by predicting the test data and generating model fit statistics.
+```{r}
+condClasses1 <- predict(condFit1, newdata = TEST1)
+
+ #Generate model statistics
+ confusionMatrix(data = condClasses1, as.factor(TEST1$Take.online.class))
+```
